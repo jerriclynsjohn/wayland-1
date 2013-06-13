@@ -27,7 +27,15 @@
 #include <linux/input.h>
 #include <unistd.h>
 #include <fcntl.h>
+#ifdef HAVE_MTDEV
 #include <mtdev.h>
+#else
+struct mtdev
+{ int none;};
+#define mtdev_close_delete(...) do{}while(0)
+#define mtdev_get(...) 0
+#define mtdev_new_open(...) NULL
+#endif
 
 #include "compositor.h"
 #include "evdev.h"
@@ -565,11 +573,8 @@ evdev_device_create(struct weston_seat *seat, const char *path, int device_fd)
 	if (device->dispatch == NULL)
 		goto err1;
 
-
 	if (device->is_mt) {
 		device->mtdev = mtdev_new_open(device->fd);
-		if (!device->mtdev)
-			weston_log("mtdev failed to open for %s\n", path);
 	}
 
 	device->source = wl_event_loop_add_fd(ec->input_loop, device->fd,

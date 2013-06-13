@@ -132,7 +132,7 @@ AC_ARG_ENABLE(drm-compositor, [  --enable-drm-compositor],,
 AM_CONDITIONAL(ENABLE_DRM_COMPOSITOR, test x$enable_drm_compositor = xyes -a x$enable_egl = xyes)
 if test x$enable_drm_compositor = xyes -a x$enable_egl = xyes; then
   AC_DEFINE([BUILD_DRM_COMPOSITOR], [1], [Build the DRM compositor])
-  PKG_CHECK_MODULES(DRM_COMPOSITOR, [libudev >= 136 libdrm >= 2.4.30 gbm mtdev >= 1.1.0])
+  PKG_CHECK_MODULES(DRM_COMPOSITOR, [libudev >= 136 libdrm >= 2.4.30 gbm])
 fi
 
 
@@ -161,7 +161,7 @@ AM_CONDITIONAL(ENABLE_RPI_COMPOSITOR, test "x$enable_rpi_compositor" = "xyes")
 have_bcm_host="no"
 if test "x$enable_rpi_compositor" = "xyes"; then
   AC_DEFINE([BUILD_RPI_COMPOSITOR], [1], [Build the compositor for Raspberry Pi])
-  PKG_CHECK_MODULES(RPI_COMPOSITOR, [libudev >= 136 mtdev >= 1.1.0])
+  PKG_CHECK_MODULES(RPI_COMPOSITOR, [libudev >= 136])
   PKG_CHECK_MODULES(RPI_BCM_HOST, [bcm_host],
                     [have_bcm_host="yes"
                      AC_DEFINE([HAVE_BCM_HOST], [1], [have Raspberry Pi BCM headers])],
@@ -176,7 +176,7 @@ AM_CONDITIONAL([ENABLE_FBDEV_COMPOSITOR],
                [test x$enable_fbdev_compositor = xyes])
 AS_IF([test x$enable_fbdev_compositor = xyes], [
   AC_DEFINE([BUILD_FBDEV_COMPOSITOR], [1], [Build the fbdev compositor])
-  PKG_CHECK_MODULES([FBDEV_COMPOSITOR], [libudev >= 136 mtdev >= 1.1.0])
+  PKG_CHECK_MODULES([FBDEV_COMPOSITOR], [libudev >= 136 ])
 ])
 
 AC_ARG_ENABLE([rdp-compositor], [  --enable-rdp-compositor],,
@@ -202,6 +202,17 @@ PKG_CHECK_MODULES(PNG, [libpng])
 PKG_CHECK_MODULES(WEBP, [libwebp], [have_webp=yes], [have_webp=no])
 AS_IF([test "x$have_webp" = "xyes"],
       [AC_DEFINE([HAVE_WEBP], [1], [Have webp])])
+
+AC_ARG_ENABLE(mtdev,
+              AS_HELP_STRING([--disable-mtdev],
+                             [do not support multitouch library libmtdev]),,
+	      enable_mtdev=auto)
+AM_CONDITIONAL(ENABLE_MTDEV, test "x$enable_mtdev" = "xyes")
+if test "x$enable_mtdev" != "xno"; then
+	PKG_CHECK_MODULES(MTDEV, [mtdev >= 1.1.0], [have_mtdev=yes], [have_mtdev=no])
+	AS_IF([test "x$have_mtdev" = "xyes"],
+		  [AC_DEFINE([HAVE_MTDEV], [1], [Have Multitouch device support])])
+fi
 
 AC_CHECK_LIB([jpeg], [jpeg_CreateDecompress], have_jpeglib=yes)
 if test x$have_jpeglib = xyes; then
