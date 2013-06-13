@@ -3278,6 +3278,8 @@ int main(int argc, char *argv[])
 	section = weston_config_get_section(config, "core", NULL, NULL);
 	weston_config_section_get_string(section, "modules",
 					 &modules, "desktop-shell.so");
+	weston_config_section_get_int(section, "idle-time",
+					 &idle_time, idle_time);
 
 	backend_init = load_module(backend, "backend_init");
 	if (!backend_init)

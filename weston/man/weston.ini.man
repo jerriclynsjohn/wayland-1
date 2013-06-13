@@ -103,8 +103,10 @@ directory are:
 .BR xwayland.so
 .fi
 .RE
-.RS
 .PP
+.TP 7
+.BI "idle-time=" value
+sets time before to fall in idle as --idle-time argument (integer).
 
 .SH "SHELL SECTION"
 The
