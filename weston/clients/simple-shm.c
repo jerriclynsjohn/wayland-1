@@ -58,6 +58,12 @@ struct window {
 	struct wl_callback *callback;
 };
 
+struct fbs_stat {
+	struct timeval start;
+	struct timeval time;
+	uint32_t count;
+};
+
 static void
 buffer_release(void *data, struct wl_buffer *buffer)
 {
@@ -205,6 +211,7 @@ window_next_buffer(struct window *window)
 	return buffer;
 }
 
+struct fbs_stat fbs;
 static void
 paint_pixels(void *image, int padding, int width, int height, uint32_t time)
 {
@@ -249,6 +256,9 @@ paint_pixels(void *image, int padding, int width, int height, uint32_t time)
 
 		pixel += padding;
 	}
+	if (!fbs.count) gettimeofday(&fbs.start, NULL);
+	fbs.count++;
+	gettimeofday(&fbs.time, NULL);
 }
 
 static const struct wl_callback_listener frame_listener;
@@ -393,11 +403,26 @@ main(int argc, char **argv)
 	struct display *display;
 	struct window *window;
 	int ret = 0;
+	int i;
+	uint16_t w = 250, h = 250;
 
+	for (i = 1; i < argc; i++) {
+		if (!strncmp("--geometry=", argv[i], 11)) {
+			char delim[] = "x";
+			char *value = argv[i]+11;
+			value = strtok(value, delim);
+			w = atol(value);
+			value = strtok(NULL, delim);
+			h = atol(value);
+		}
+	}
+			
 	display = create_display();
-	window = create_window(display, 250, 250);
+	window = create_window(display, w, h);
 	if (!window)
 		return 1;
+
+	memset(&fbs, 0, sizeof fbs);
 
 	sigint.sa_handler = signal_int;
 	sigemptyset(&sigint.sa_mask);
@@ -413,6 +438,7 @@ main(int argc, char **argv)
 	while (running && ret != -1)
 		ret = wl_display_dispatch(display->display);
 
+	fprintf(stderr, "frames per second %u\n", fbs.count / (fbs.time.tv_sec - fbs.start.tv_sec));
 	fprintf(stderr, "simple-shm exiting\n");
 	destroy_window(window);
 	destroy_display(display);
