@@ -389,6 +389,14 @@ fbdev_query_screen_info(struct fbdev_output *output, int fd,
 	info->pixel_format = calculate_pixman_format(&varinfo, &fixinfo);
 	info->refresh_rate = calculate_refresh_rate(&varinfo);
 
+	/* check if the buffer accept double buffering */
+	info->dbuffer_offset = info->x_resolution * info->y_resolution * info->bits_per_pixel / 8;
+	if (info->buffer_length > (2 * info->dbuffer_offset)) {
+		output->is_doublebuffering = 1;
+	} else {
+		info->dbuffer_offset == 0;
+	}
+
 	if (info->pixel_format == 0) {
 		weston_log("Frame buffer uses an unsupported format.\n");
 		return -1;
