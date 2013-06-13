@@ -82,6 +82,7 @@ struct fbdev_output {
 	const char *device; /* ownership shared with fbdev_parameters */
 	struct fbdev_screeninfo fb_info;
 	void *fb; /* length is fb_info.buffer_length */
+	int fd;
 
 	/* pixman details. */
 	pixman_image_t *hw_surface;
@@ -135,62 +136,77 @@ fbdev_output_repaint(struct weston_output *base, pixman_region32_t *damage)
 	pixman_renderer_output_set_buffer(base, output->shadow_surface);
 	ec->renderer->repaint_output(base, damage);
 
-	/* Transform and composite onto the frame buffer. */
-	width = pixman_image_get_width(output->shadow_surface);
-	height = pixman_image_get_height(output->shadow_surface);
-	rects = pixman_region32_rectangles(damage, &nrects);
-
-	for (i = 0; i < nrects; i++) {
-		switch (base->transform) {
-		default:
-		case WL_OUTPUT_TRANSFORM_NORMAL:
-			x1 = rects[i].x1;
-			x2 = rects[i].x2;
-			y1 = rects[i].y1;
-			y2 = rects[i].y2;
-			break;
-		case WL_OUTPUT_TRANSFORM_180:
-			x1 = width - rects[i].x2;
-			x2 = width - rects[i].x1;
-			y1 = height - rects[i].y2;
-			y2 = height - rects[i].y1;
-			break;
-		case WL_OUTPUT_TRANSFORM_90:
-			x1 = height - rects[i].y2;
-			x2 = height - rects[i].y1;
-			y1 = rects[i].x1;
-			y2 = rects[i].x2;
-			break;
-		case WL_OUTPUT_TRANSFORM_270:
-			x1 = rects[i].y1;
-			x2 = rects[i].y2;
-			y1 = width - rects[i].x2;
-			y2 = width - rects[i].x1;
-			break;
-		}
-		src_x = x1;
-		src_y = y1;
-
-		pixman_image_composite32(PIXMAN_OP_SRC,
-			output->shadow_surface, /* src */
-			NULL /* mask */,
-			output->hw_surface, /* dest */
-			src_x, src_y, /* src_x, src_y */
-			0, 0, /* mask_x, mask_y */
-			x1, y1, /* dest_x, dest_y */
-			x2 - x1, /* width */
-			y2 - y1 /* height */);
-	}
-
-	/* Update the damage region. */
-	pixman_region32_subtract(&ec->primary_plane.damage,
-	                         &ec->primary_plane.damage, damage);
 	/* flip double buffering */
-	if (output->is_doublebuffering) {
-		if (output->hw_surface == output->hw_surface_1)
+	if (!output->is_doublebuffering) {
+		/* Transform and composite onto the frame buffer. */
+		width = pixman_image_get_width(output->shadow_surface);
+		height = pixman_image_get_height(output->shadow_surface);
+		rects = pixman_region32_rectangles(damage, &nrects);
+
+		for (i = 0; i < nrects; i++) {
+			switch (base->transform) {
+			default:
+			case WL_OUTPUT_TRANSFORM_NORMAL:
+				x1 = rects[i].x1;
+				x2 = rects[i].x2;
+				y1 = rects[i].y1;
+				y2 = rects[i].y2;
+				break;
+			case WL_OUTPUT_TRANSFORM_180:
+				x1 = width - rects[i].x2;
+				x2 = width - rects[i].x1;
+				y1 = height - rects[i].y2;
+				y2 = height - rects[i].y1;
+				break;
+			case WL_OUTPUT_TRANSFORM_90:
+				x1 = height - rects[i].y2;
+				x2 = height - rects[i].y1;
+				y1 = rects[i].x1;
+				y2 = rects[i].x2;
+				break;
+			case WL_OUTPUT_TRANSFORM_270:
+				x1 = rects[i].y1;
+				x2 = rects[i].y2;
+				y1 = width - rects[i].x2;
+				y2 = width - rects[i].x1;
+				break;
+			}
+			src_x = x1;
+			src_y = y1;
+
+			pixman_image_composite32(PIXMAN_OP_SRC,
+				output->shadow_surface, /* src */
+				NULL /* mask */,
+				output->hw_surface, /* dest */
+				src_x, src_y, /* src_x, src_y */
+				0, 0, /* mask_x, mask_y */
+				x1, y1, /* dest_x, dest_y */
+				x2 - x1, /* width */
+				y2 - y1 /* height */);
+		}
+
+		/* Update the damage region. */
+		pixman_region32_subtract(&ec->primary_plane.damage,
+								 &ec->primary_plane.damage, damage);
+	} else {
+		struct fb_var_screeninfo varinfo;
+		int offset = 0;
+
+		if (output->hw_surface == output->hw_surface_1) {
 			output->hw_surface = output->hw_surface_2;
-		else
+			output->shadow_surface = output->hw_surface_1;
+		} else {
+			offset = output->fb_info.dbuffer_offset;
 			output->hw_surface = output->hw_surface_1;
+			output->shadow_surface = output->hw_surface_2;
+		}
+		msync(output->fb + offset, output->fb_info.dbuffer_offset, MS_ASYNC);
+
+		if (output->fd && 
+			ioctl(output->fd, FBIOGET_VSCREENINFO, &varinfo) >= 0) {		
+			varinfo.yoffset	= offset;
+			ioctl(output->fd, FBIOPAN_DISPLAY, &varinfo);
+		}
 	}
 	/* Schedule the end of the frame. We do not sync this to the frame
 	 * buffer clock because users who want that should be using the DRM
@@ -502,10 +518,12 @@ fbdev_frame_buffer_map(struct fbdev_output *output, int fd)
 		}
 	}
 	output->hw_surface = output->hw_surface_1;
+	output->fd = fd;
 
 	/* Success! */
 	retval = 0;
 
+	return retval;
 out_unmap:
 	if (retval != 0 && output->fb != NULL)
 		fbdev_frame_buffer_destroy(output);
@@ -527,6 +545,10 @@ fbdev_frame_buffer_destroy(struct fbdev_output *output)
 		           strerror(errno));
 
 	output->fb = NULL;
+
+	if (output->fd >= 0)
+		close(output->fd);
+	output->fd = 0;
 }
 
 static void fbdev_output_destroy(struct weston_output *base);
@@ -641,23 +663,31 @@ fbdev_output_create(struct fbdev_compositor *compositor,
 
 	bytes_per_pixel = output->fb_info.bits_per_pixel / 8;
 
-	output->shadow_buf = malloc(width * height * bytes_per_pixel);
-	output->shadow_surface =
-		pixman_image_create_bits(output->fb_info.pixel_format,
-		                         shadow_width, shadow_height,
-		                         output->shadow_buf,
-		                         shadow_width * bytes_per_pixel);
-	if (output->shadow_buf == NULL || output->shadow_surface == NULL) {
-		weston_log("Failed to create surface for frame buffer.\n");
-		goto out_hw_surface;
+	if (output->is_doublebuffering) {
+		output->shadow_buf = NULL;
+		output->shadow_surface = output->hw_surface_2;
+	} else {
+		output->shadow_buf = malloc(width * height * bytes_per_pixel);
+		output->shadow_surface =
+			pixman_image_create_bits(output->fb_info.pixel_format,
+									 shadow_width, shadow_height,
+									 output->shadow_buf,
+									 shadow_width * bytes_per_pixel);
+		if (output->shadow_buf == NULL || output->shadow_surface == NULL) {
+			weston_log("Failed to create surface for frame buffer.\n");
+			goto out_hw_surface;
+		}
+
+		/* No need in transform for normal output */
+		if (output->base.transform != WL_OUTPUT_TRANSFORM_NORMAL)
+			pixman_image_set_transform(output->shadow_surface, &transform);
 	}
 
-	/* No need in transform for normal output */
-	if (output->base.transform != WL_OUTPUT_TRANSFORM_NORMAL)
-		pixman_image_set_transform(output->shadow_surface, &transform);
-
 	if (pixman_renderer_output_create(&output->base) < 0)
-		goto out_shadow_surface;
+		if (output->shadow_buf)
+			goto out_shadow_surface;
+		else
+			goto out_hw_surface;
 
 	loop = wl_display_get_event_loop(compositor->base.wl_display);
 	output->finish_frame_timer =
@@ -676,7 +706,7 @@ out_shadow_surface:
 	pixman_image_unref(output->shadow_surface);
 	output->shadow_surface = NULL;
 out_hw_surface:
-	free(output->shadow_buf);
+	if (output->shadow_buf)free(output->shadow_buf);
 	pixman_image_unref(output->hw_surface_1);
 	output->hw_surface_1 = NULL;
 	if (output->hw_surface_2)
