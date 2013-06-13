@@ -61,6 +61,7 @@ struct fbdev_screeninfo {
 	unsigned int width_mm; /* visible screen width in mm */
 	unsigned int height_mm; /* visible screen height in mm */
 	unsigned int bits_per_pixel;
+	unsigned long dbuffer_offset;
 
 	size_t buffer_length; /* length of frame buffer memory in bytes */
 	size_t line_length; /* length of a line in bytes */
@@ -84,9 +85,12 @@ struct fbdev_output {
 
 	/* pixman details. */
 	pixman_image_t *hw_surface;
+	pixman_image_t *hw_surface_1;
+	pixman_image_t *hw_surface_2;
 	pixman_image_t *shadow_surface;
 	void *shadow_buf;
 	uint8_t depth;
+	uint8_t is_doublebuffering:1;
 };
 
 struct fbdev_parameters {
@@ -181,7 +185,13 @@ fbdev_output_repaint(struct weston_output *base, pixman_region32_t *damage)
 	/* Update the damage region. */
 	pixman_region32_subtract(&ec->primary_plane.damage,
 	                         &ec->primary_plane.damage, damage);
-
+	/* flip double buffering */
+	if (output->is_doublebuffering) {
+		if (output->hw_surface == output->hw_surface_1)
+			output->hw_surface = output->hw_surface_2;
+		else
+			output->hw_surface = output->hw_surface_1;
+	}
 	/* Schedule the end of the frame. We do not sync this to the frame
 	 * buffer clock because users who want that should be using the DRM
 	 * compositor. FBIO_WAITFORVSYNC blocks and FB_ACTIVATE_VBL requires
@@ -468,7 +478,7 @@ fbdev_frame_buffer_map(struct fbdev_output *output, int fd)
 	}
 
 	/* Create a pixman image to wrap the memory mapped frame buffer. */
-	output->hw_surface =
+	output->hw_surface_1 =
 		pixman_image_create_bits(output->fb_info.pixel_format,
 		                         output->fb_info.x_resolution,
 		                         output->fb_info.y_resolution,
@@ -478,6 +488,20 @@ fbdev_frame_buffer_map(struct fbdev_output *output, int fd)
 		weston_log("Failed to create surface for frame buffer.\n");
 		goto out_unmap;
 	}
+
+	if (output->is_doublebuffering) {
+		output->hw_surface_2 =
+			pixman_image_create_bits(output->fb_info.pixel_format,
+									 output->fb_info.x_resolution,
+									 output->fb_info.y_resolution,
+									 output->fb + output->fb_info.dbuffer_offset,
+									 output->fb_info.line_length);
+		if (output->hw_surface_2 == NULL) {
+			weston_log("Failed to create surface for double frame buffer.\n");
+			output->is_doublebuffering = 0;
+		}
+	}
+	output->hw_surface = output->hw_surface_1;
 
 	/* Success! */
 	retval = 0;
@@ -653,8 +677,11 @@ out_shadow_surface:
 	output->shadow_surface = NULL;
 out_hw_surface:
 	free(output->shadow_buf);
-	pixman_image_unref(output->hw_surface);
-	output->hw_surface = NULL;
+	pixman_image_unref(output->hw_surface_1);
+	output->hw_surface_1 = NULL;
+	if (output->hw_surface_2)
+		pixman_image_unref(output->hw_surface_2);
+	output->hw_surface_2 = NULL;
 	weston_output_destroy(&output->base);
 	fbdev_frame_buffer_destroy(output);
 out_free:
@@ -769,10 +796,16 @@ fbdev_output_disable(struct weston_output *base)
 
 	weston_log("Disabling fbdev output.\n");
 
-	if (output->hw_surface != NULL) {
-		pixman_image_unref(output->hw_surface);
-		output->hw_surface = NULL;
+	if (output->hw_surface_1 != NULL) {
+		pixman_image_unref(output->hw_surface_1);
+		output->hw_surface_1 = NULL;
 	}
+
+	if (output->hw_surface_2 != NULL) {
+		pixman_image_unref(output->hw_surface_2);
+		output->hw_surface_2 = NULL;
+	}
+	output->hw_surface = NULL;
 
 	fbdev_frame_buffer_destroy(output);
 }
