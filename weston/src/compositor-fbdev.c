@@ -203,6 +203,43 @@ finish_frame_handler(void *data)
 	return 1;
 }
 
+static int
+set_cmap(int fd, struct fb_var_screeninfo *vinfo)
+{
+	struct fb_cmap cmap;
+	uint16_t *colors;
+	int i;
+	int rcols = 1 << vinfo->red.length;
+	int gcols = 1 << vinfo->green.length;
+	int bcols = 1 << vinfo->blue.length;
+
+	memset(&cmap, 0, sizeof(cmap));
+
+	/* Make our palette the length of the deepest color */
+	int cols = (rcols > gcols ? rcols : gcols);
+	cols = (cols > bcols ? cols : bcols);
+
+	colors = malloc(sizeof(uint16_t) * cols);
+	if (!colors) return -1;
+
+	for (i = 0; i < cols; i++)
+		colors[i] = (UINT16_MAX / (cols - 1)) * i;
+
+	cmap.start = 0;
+	cmap.len = cols;
+	cmap.red = colors;
+	cmap.blue = colors;
+	cmap.green = colors;
+	if (vinfo->transp.length)
+		cmap.transp = colors;
+	else
+		cmap.transp = NULL;
+	ioctl(fd, FBIOPUTCMAP, &cmap);
+
+	free(colors);
+	return 0;
+}
+
 static pixman_format_code_t
 calculate_pixman_format(struct fb_var_screeninfo *vinfo,
                         struct fb_fix_screeninfo *finfo)
@@ -242,7 +279,8 @@ calculate_pixman_format(struct fb_var_screeninfo *vinfo,
 		return 0;
 
 	/* We only handle true-colour frame buffers at the moment. */
-	if (finfo->visual != FB_VISUAL_TRUECOLOR || vinfo->grayscale != 0)
+	if (!(finfo->visual == FB_VISUAL_TRUECOLOR || finfo->visual == FB_VISUAL_DIRECTCOLOR)
+		|| vinfo->grayscale != 0)
 		return 0;
 
 	/* We only support formats with MSBs on the left. */
