@@ -363,6 +363,9 @@ fbdev_query_screen_info(struct fbdev_output *output, int fd,
 	info->pixel_format = calculate_pixman_format(&varinfo, &fixinfo);
 	info->refresh_rate = calculate_refresh_rate(&varinfo);
 
+	if (fixinfo.visual == FB_VISUAL_DIRECTCOLOR)
+		set_cmap(fd, &varinfo);
+
 	if (info->pixel_format == 0) {
 		weston_log("Frame buffer uses an unsupported format.\n");
 		return -1;
