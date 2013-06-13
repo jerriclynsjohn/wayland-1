@@ -368,6 +368,11 @@ fbdev_query_screen_info(struct fbdev_output *output, int fd,
 		return -1;
 	}
 
+	if (varinfo.yoffset != 0) {
+		varinfo.yoffset	= 0;
+		if (ioctl(fd, FBIOPAN_DISPLAY, &varinfo) < 0)
+			return -1;
+	}
 	return 1;
 }
 
@@ -404,6 +409,7 @@ fbdev_set_screen_info(struct fbdev_output *output, int fd,
 	varinfo.blue.length = 8;
 	varinfo.blue.msb_right = 0;
 
+	varinfo.yoffset = 0;
 	/* Set the device's screen information. */
 	if (ioctl(fd, FBIOPUT_VSCREENINFO, &varinfo) < 0) {
 		return -1;
