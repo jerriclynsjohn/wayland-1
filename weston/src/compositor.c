@@ -2811,7 +2811,6 @@ weston_compositor_init(struct weston_compositor *ec,
 	weston_plane_init(&ec->primary_plane, 0, 0);
 	weston_compositor_stack_plane(ec, &ec->primary_plane, NULL);
 
-	ec->use_xkbcommon = 1;
 	s = weston_config_get_section(ec->config, "keyboard", NULL, NULL);
 	weston_config_section_get_string(s, "keymap_rules",
 					 (char **) &xkb_names.rules, NULL);
@@ -2823,8 +2822,11 @@ weston_compositor_init(struct weston_compositor *ec,
 					 (char **) &xkb_names.variant, NULL);
 	weston_config_section_get_string(s, "keymap_options",
 					 (char **) &xkb_names.options, NULL);
+#ifdef ENABLE_XKBCOMMON
+	ec->use_xkbcommon = 1;
 	if (weston_compositor_xkb_init(ec, &xkb_names) < 0)
 		return -1;
+#endif
 
 	ec->ping_handler = NULL;
 
@@ -3332,7 +3334,9 @@ int main(int argc, char *argv[])
 	for (i = ARRAY_LENGTH(signals); i;)
 		wl_event_source_remove(signals[--i]);
 
+#ifdef ENABLE_XKBCOMMON
 	weston_compositor_xkb_destroy(ec);
+#endif
 
 	ec->destroy(ec);
 	wl_display_destroy(display);

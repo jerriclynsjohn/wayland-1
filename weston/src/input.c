@@ -741,6 +741,7 @@ notify_axis(struct weston_seat *seat, uint32_t time, uint32_t axis,
 				     value);
 }
 
+#ifdef ENABLE_XKBCOMMON
 WL_EXPORT void
 notify_modifiers(struct weston_seat *seat, uint32_t serial)
 {
@@ -830,6 +831,18 @@ update_modifier_state(struct weston_seat *seat, uint32_t serial, uint32_t key,
 
 	notify_modifiers(seat, serial);
 }
+#else
+WL_EXPORT void
+notify_modifiers(struct weston_seat *seat, uint32_t serial)
+{
+}
+
+static void
+update_modifier_state(struct weston_seat *seat, uint32_t serial, uint32_t key,
+		      enum wl_keyboard_key_state state)
+{
+}
+#endif
 
 WL_EXPORT void
 notify_key(struct weston_seat *seat, uint32_t time, uint32_t key,
@@ -1266,6 +1279,7 @@ bind_seat(struct wl_client *client, void *data, uint32_t version, uint32_t id)
 		wl_seat_send_name(resource, seat->seat_name);
 }
 
+#ifdef ENABLE_XKBCOMMON
 int
 weston_compositor_xkb_init(struct weston_compositor *ec,
 			   struct xkb_rule_names *names)
@@ -1406,6 +1420,7 @@ weston_compositor_build_global_keymap(struct weston_compositor *ec)
 
 	return 0;
 }
+#endif
 
 WL_EXPORT int
 weston_seat_init_keyboard(struct weston_seat *seat, struct xkb_keymap *keymap)
@@ -1415,6 +1430,7 @@ weston_seat_init_keyboard(struct weston_seat *seat, struct xkb_keymap *keymap)
 	if (seat->keyboard)
 		return 0;
 
+#ifdef ENABLE_XKBCOMMON
 	if (seat->compositor->use_xkbcommon) {
 		if (keymap != NULL) {
 			seat->xkb_info.keymap = xkb_map_ref(keymap);
@@ -1435,6 +1451,7 @@ weston_seat_init_keyboard(struct weston_seat *seat, struct xkb_keymap *keymap)
 
 		seat->xkb_state.leds = 0;
 	}
+#endif
 
 	keyboard = weston_keyboard_create();
 	if (keyboard == NULL) {
@@ -1519,11 +1536,13 @@ weston_seat_release(struct weston_seat *seat)
 	wl_list_remove(&seat->link);
 	/* The global object is destroyed at wl_display_destroy() time. */
 
+#ifdef ENABLE_XKBCOMMON
 	if (seat->compositor->use_xkbcommon) {
 		if (seat->xkb_state.state != NULL)
 			xkb_state_unref(seat->xkb_state.state);
 		xkb_info_destroy(&seat->xkb_info);
 	}
+#endif
 
 	if (seat->pointer)
 		weston_pointer_destroy(seat->pointer);
