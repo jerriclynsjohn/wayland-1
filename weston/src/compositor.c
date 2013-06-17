@@ -2771,8 +2771,6 @@ weston_compositor_init(struct weston_compositor *ec,
 		       struct weston_config *config)
 {
 	struct wl_event_loop *loop;
-	struct xkb_rule_names xkb_names;
-	struct weston_config_section *s;
 
 	ec->config = config;
 	ec->wl_display = display;
@@ -2811,21 +2809,26 @@ weston_compositor_init(struct weston_compositor *ec,
 	weston_plane_init(&ec->primary_plane, 0, 0);
 	weston_compositor_stack_plane(ec, &ec->primary_plane, NULL);
 
-	s = weston_config_get_section(ec->config, "keyboard", NULL, NULL);
-	weston_config_section_get_string(s, "keymap_rules",
-					 (char **) &xkb_names.rules, NULL);
-	weston_config_section_get_string(s, "keymap_model",
-					 (char **) &xkb_names.model, NULL);
-	weston_config_section_get_string(s, "keymap_layout",
-					 (char **) &xkb_names.layout, NULL);
-	weston_config_section_get_string(s, "keymap_variant",
-					 (char **) &xkb_names.variant, NULL);
-	weston_config_section_get_string(s, "keymap_options",
-					 (char **) &xkb_names.options, NULL);
 #ifdef ENABLE_XKBCOMMON
-	ec->use_xkbcommon = 1;
-	if (weston_compositor_xkb_init(ec, &xkb_names) < 0)
-		return -1;
+	{
+		struct xkb_rule_names xkb_names;
+		struct weston_config_section *s;
+
+		s = weston_config_get_section(ec->config, "keyboard", NULL, NULL);
+		weston_config_section_get_string(s, "keymap_rules",
+						 (char **) &xkb_names.rules, NULL);
+		weston_config_section_get_string(s, "keymap_model",
+						 (char **) &xkb_names.model, NULL);
+		weston_config_section_get_string(s, "keymap_layout",
+						 (char **) &xkb_names.layout, NULL);
+		weston_config_section_get_string(s, "keymap_variant",
+						 (char **) &xkb_names.variant, NULL);
+		weston_config_section_get_string(s, "keymap_options",
+						 (char **) &xkb_names.options, NULL);
+		ec->use_xkbcommon = 1;
+		if (weston_compositor_xkb_init(ec, &xkb_names) < 0)
+			return -1;
+	}
 #endif
 
 	ec->ping_handler = NULL;

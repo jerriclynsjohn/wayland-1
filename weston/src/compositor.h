@@ -29,7 +29,13 @@ extern "C" {
 #endif
 
 #include <pixman.h>
+#ifdef ENABLE_XKBCOMMON
 #include <xkbcommon/xkbcommon.h>
+typedef struct xkb_keymap xkb_keymap_t;
+#else
+typedef void xkb_keymap_t;
+#define xkb_state_update_mask(...) do{}while(0)
+#endif
 #include <wayland-server.h>
 
 #include "version.h"
@@ -368,6 +374,7 @@ void
 weston_seat_set_selection(struct weston_seat *seat,
 			  struct wl_data_source *source, uint32_t serial);
 
+#ifdef ENABLE_XKBCOMMON
 struct weston_xkb_info {
 	struct xkb_keymap *keymap;
 	int keymap_fd;
@@ -385,6 +392,7 @@ struct weston_xkb_info {
 	xkb_led_index_t caps_led;
 	xkb_led_index_t scroll_led;
 };
+#endif
 
 struct weston_keyboard {
 	struct weston_seat *seat;
@@ -440,7 +448,9 @@ struct weston_seat {
 
 	void (*led_update)(struct weston_seat *ws, enum weston_led leds);
 
+#ifdef ENABLE_XKBCOMMON
 	struct weston_xkb_info xkb_info;
+#endif
 	struct {
 		struct xkb_state *state;
 		enum weston_led leds;
@@ -555,9 +565,11 @@ struct weston_compositor {
 
 	uint32_t output_id_pool;
 
+#ifdef ENABLE_XKBCOMMON
 	struct xkb_rule_names xkb_names;
 	struct xkb_context *xkb_context;
 	struct weston_xkb_info xkb_info;
+#endif
 
 	int use_xkbcommon;
 };
@@ -1040,7 +1052,7 @@ weston_seat_init(struct weston_seat *seat, struct weston_compositor *ec,
 void
 weston_seat_init_pointer(struct weston_seat *seat);
 int
-weston_seat_init_keyboard(struct weston_seat *seat, struct xkb_keymap *keymap);
+weston_seat_init_keyboard(struct weston_seat *seat, xkb_keymap_t *keymap);
 void
 weston_seat_init_touch(struct weston_seat *seat);
 void
@@ -1048,11 +1060,13 @@ weston_seat_repick(struct weston_seat *seat);
 
 void
 weston_seat_release(struct weston_seat *seat);
+#ifdef ENABLE_XKBCOMMON
 int
 weston_compositor_xkb_init(struct weston_compositor *ec,
 			   struct xkb_rule_names *names);
 void
 weston_compositor_xkb_destroy(struct weston_compositor *ec);
+#endif
 
 /* String literal of spaces, the same width as the timestamp. */
 #define STAMP_SPACE "               "

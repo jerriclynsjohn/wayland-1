@@ -586,9 +586,18 @@ input_method_context_grab_keyboard(struct wl_client *client,
 
 	context->keyboard = cr;
 
-	wl_keyboard_send_keymap(cr, WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
-				seat->xkb_info.keymap_fd,
-				seat->xkb_info.keymap_size);
+#ifdef ENABLE_XKBCOMMON
+	if (seat->compositor->use_xkbcommon) {
+		wl_keyboard_send_keymap(cr, WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
+					seat->xkb_info.keymap_fd,
+					seat->xkb_info.keymap_size);
+	} else
+#endif
+	{
+		wl_keyboard_send_keymap(cr, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP,
+					0,
+					0);
+	}
 
 	if (keyboard->grab != &keyboard->default_grab) {
 		weston_keyboard_end_grab(keyboard);

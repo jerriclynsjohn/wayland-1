@@ -1216,11 +1216,14 @@ seat_get_keyboard(struct wl_client *client, struct wl_resource *resource,
 	wl_list_insert(&seat->keyboard->resource_list, &cr->link);
 	cr->destroy = unbind_resource;
 
+#ifdef ENABLE_XKBCOMMON
 	if (seat->compositor->use_xkbcommon) {
 		wl_keyboard_send_keymap(cr, WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
 					seat->xkb_info.keymap_fd,
 					seat->xkb_info.keymap_size);
-	} else {
+	} else
+#endif
+	{
 		wl_keyboard_send_keymap(cr, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP,
 					0,
 					0);
@@ -1423,7 +1426,7 @@ weston_compositor_build_global_keymap(struct weston_compositor *ec)
 #endif
 
 WL_EXPORT int
-weston_seat_init_keyboard(struct weston_seat *seat, struct xkb_keymap *keymap)
+weston_seat_init_keyboard(struct weston_seat *seat, xkb_keymap_t *keymap)
 {
 	struct weston_keyboard *keyboard;
 
