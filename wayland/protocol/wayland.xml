@@ -1405,6 +1405,7 @@
 	client with the wl_keyboard.keymap event.
       </description>
       <entry name="xkb_v1" value="1" summary="libxkbcommon compatible"/>
+      <entry name="no_keymap" value="2" summary="no keymap; events feature raw codes"/>
     </enum>
 
     <event name="keymap">
