@@ -1,5 +1,5 @@
 bin_PROGRAMS =					\
-	weston-info				\
+	$(info)				\
 	$(terminal)
 
 noinst_PROGRAMS =				\
@@ -15,7 +15,7 @@ libexec_PROGRAMS =				\
 	$(screenshooter)			\
 	$(screensaver)				\
 	$(keyboard)				\
-	weston-simple-im
+	$(im)
 
 AM_CFLAGS = $(GCC_CFLAGS)
 AM_CPPFLAGS =					\
@@ -173,12 +173,14 @@ weston_keyboard_SOURCES = 			\
 	input-method-client-protocol.h
 weston_keyboard_LDADD = libtoytoolkit.la
 
+im = weston-simple-im
 weston_simple_im_SOURCES = 			\
 	weston-simple-im.c			\
 	input-method-protocol.c			\
 	input-method-client-protocol.h
 weston_simple_im_LDADD = $(CLIENT_LIBS)
 
+info = weston-info
 weston_info_SOURCES =				\
 	weston-info.c				\
 	../shared/os-compatibility.c		\
@@ -216,7 +218,6 @@ BUILT_SOURCES =					\
 	workspaces-protocol.c
 
 CLEANFILES = $(BUILT_SOURCES)
-endif
 
 if BUILD_FULL_GL_CLIENTS
 full_gl_client_programs = gears
@@ -238,14 +239,16 @@ weston_screensaver_SOURCES =			\
 weston_screensaver_LDADD = libtoytoolkit.la $(GLU_LIBS)
 weston_screensaver_CFLAGS = $(GLU_CFLAGS)
 endif
-
-endif
-
-@wayland_scanner_rules@
-
 if HAVE_POPPLER
 poppler_programs = view
 view_SOURCES = view.c
 view_LDADD = libtoytoolkit.la $(POPPLER_LIBS)
 view_CPPFLAGS = $(AM_CPPFLAGS) $(POPPLER_CFLAGS)
 endif
+
+endif
+
+endif
+
+@wayland_scanner_rules@
+
