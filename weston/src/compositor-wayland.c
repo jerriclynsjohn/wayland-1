@@ -481,12 +481,13 @@ static const struct wl_pointer_listener pointer_listener = {
 	input_handle_axis,
 };
 
+#ifdef ENABLE_XKBCOMMON
 static void
 input_handle_keymap(void *data, struct wl_keyboard *keyboard, uint32_t format,
 		    int fd, uint32_t size)
 {
 	struct wayland_input *input = data;
-	struct xkb_keymap *keymap;
+	xkb_keymap_t *keymap = NULL;
 	char *map_str;
 
 	if (!data) {
@@ -520,6 +521,9 @@ input_handle_keymap(void *data, struct wl_keyboard *keyboard, uint32_t format,
 	weston_seat_init_keyboard(&input->base, keymap);
 	xkb_map_unref(keymap);
 }
+#else
+#define input_handle_keymap NULL
+#endif
 
 static void
 input_handle_keyboard_enter(void *data,
