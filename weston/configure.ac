@@ -65,10 +65,11 @@ if test x$enable_egl = xyes; then
 fi
 
 AC_ARG_ENABLE(xkbcommon, [  --disable-xkbcommon],,
-	enable_xkbcommon=yes)
-if test x$enable_xkbcommon = xyes; then
-	AC_DEFINE(ENABLE_XKBCOMMON, [1], [Build Weston with libxkbcommon support])
-	COMPOSITOR_MODULES="$COMPOSITOR_MODULES xkbcommon"
+	enable_xkbcommon=auto)
+if test x$enable_xkbcommon != xno; then
+	PKG_CHECK_MODULES(XKBCOMMON, [xkbcommon], [have_xkbcommon=yes], [have_xkbcommon=no])
+	AS_IF([test "x$have_xkbcommon" = "xyes"],
+		  [AC_DEFINE([ENABLE_XKBCOMMON], [1], [Build Weston with libxkbcommon support])])
 fi
 
 PKG_CHECK_MODULES(COMPOSITOR, [$COMPOSITOR_MODULES])
