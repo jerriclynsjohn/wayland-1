@@ -558,6 +558,8 @@ struct weston_compositor {
 	struct xkb_rule_names xkb_names;
 	struct xkb_context *xkb_context;
 	struct weston_xkb_info xkb_info;
+
+	int use_xkbcommon;
 };
 
 struct weston_buffer_reference {
