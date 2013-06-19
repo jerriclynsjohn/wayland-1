@@ -9,9 +9,10 @@ AM_CPPFLAGS =					\
 	-DIN_WESTON
 
 weston_LDFLAGS = -export-dynamic
-weston_CFLAGS = $(GCC_CFLAGS) $(COMPOSITOR_CFLAGS) $(LIBUNWIND_CFLAGS)
+weston_CFLAGS = $(GCC_CFLAGS) $(COMPOSITOR_CFLAGS) \
+	$(LIBUNWIND_CFLAGS) $(XKBCOMMON_CFLAGS)
 weston_LDADD = $(COMPOSITOR_LIBS) $(LIBUNWIND_LIBS) \
-	$(DLOPEN_LIBS) -lm ../shared/libshared.la
+	$(XKBCOMMON_LIBS) $(DLOPEN_LIBS) -lm ../shared/libshared.la
 
 weston_SOURCES =				\
 	git-version.h				\
@@ -119,12 +120,13 @@ if ENABLE_X11_COMPOSITOR
 x11_backend = x11-backend.la
 x11_backend_la_LDFLAGS = -module -avoid-version
 x11_backend_la_LIBADD = $(COMPOSITOR_LIBS) $(X11_COMPOSITOR_LIBS) \
-	../shared/libshared-cairo.la
+	$(XKBCOMMON_LIBS) ../shared/libshared-cairo.la
 x11_backend_la_CFLAGS =				\
 	$(COMPOSITOR_CFLAGS)			\
 	$(PIXMAN_CFLAGS)			\
 	$(CAIRO_CFLAGS)				\
 	$(X11_COMPOSITOR_CFLAGS)		\
+	$(XKBCOMMON_CFLAGS)			\
 	$(GCC_CFLAGS)
 x11_backend_la_SOURCES = compositor-x11.c
 endif

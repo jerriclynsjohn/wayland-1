@@ -3018,7 +3018,7 @@ keyboard_translate_key(uint32_t key, struct input *input)
 
 	num_syms = xkb_key_get_syms(input->xkb.state, code, &syms);
 
-	sym = WL_KEY_NoSymbol;
+	sym = XKB_KEY_NoSymbol;
 	if (num_syms == 1)
 		sym = syms[0];
 
