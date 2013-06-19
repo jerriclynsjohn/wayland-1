@@ -79,7 +79,6 @@ clients_programs =				\
 	$(cairo_glesv2_programs)
 
 desktop_shell = weston-desktop-shell
-desktop_shell2 = weston-desktop-shell2
 
 if ENABLE_TABLET_SHELL
 tablet_shell = weston-tablet-shell
@@ -200,15 +199,6 @@ weston_desktop_shell_SOURCES =			\
 	desktop-shell-client-protocol.h		\
 	desktop-shell-protocol.c
 weston_desktop_shell_LDADD = libtoytoolkit.la
-
-weston_desktop_shell2_SOURCES =			\
-	desktop-shell-simple.c				\
-	desktop-shell-unlock.c				\
-	desktop-shell-panel.c				\
-	desktop-shell-background.c				\
-	desktop-shell-client-protocol.h		\
-	desktop-shell-protocol.c
-weston_desktop_shell2_LDADD = libtoytoolkit.la
 
 weston_tablet_shell_SOURCES =			\
 	tablet-shell.c				\
