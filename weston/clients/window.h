@@ -23,6 +23,8 @@
 #ifndef _WINDOW_H_
 #define _WINDOW_H_
 
+#include "config.h"
+
 #ifdef ENABLE_XKBCOMMON
 #include <xkbcommon/xkbcommon.h>
 #else

@@ -100,6 +100,7 @@ libtoytoolkit_la_SOURCES =			\
 
 libtoytoolkit_la_LIBADD =			\
 	$(CLIENT_LIBS)				\
+	$(XKBCOMMON_LIBS)			\
 	$(CAIRO_EGL_LIBS)			\
 	../shared/libshared-cairo.la -lrt -lm
 
@@ -185,7 +186,7 @@ weston_simple_im_SOURCES = 			\
 	weston-simple-im.c			\
 	input-method-protocol.c			\
 	input-method-client-protocol.h
-weston_simple_im_LDADD = $(CLIENT_LIBS)
+weston_simple_im_LDADD = $(CLIENT_LIBS) $(XKBCOMMON_LIBS)
 
 info = weston-info
 weston_info_SOURCES =				\
