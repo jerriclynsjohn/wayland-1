@@ -59,7 +59,6 @@ typedef void *EGLContext;
 #define EGL_NO_DISPLAY ((EGLDisplay)0)
 #endif /* no HAVE_CAIRO_EGL */
 
-#include <xkbcommon/xkbcommon.h>
 #include <wayland-cursor.h>
 
 #include <linux/input.h>
@@ -302,6 +301,7 @@ struct input {
 	struct data_offer *drag_offer;
 	struct data_offer *selection_offer;
 
+#ifdef ENABLE_XKBCOMMON
 	struct {
 		struct xkb_keymap *keymap;
 		struct xkb_state *state;
@@ -309,6 +309,7 @@ struct input {
 		xkb_mod_mask_t alt_mask;
 		xkb_mod_mask_t shift_mask;
 	} xkb;
+#endif
 
 	struct task repeat_task;
 	int repeat_timer_fd;
@@ -2915,6 +2916,7 @@ keyboard_repeat_func(struct task *task, uint32_t events)
 	}
 }
 
+#ifdef ENABLE_XKBCOMMON
 static void
 keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
 		       uint32_t format, int fd, uint32_t size)
@@ -2965,6 +2967,9 @@ keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
 	input->xkb.shift_mask =
 		1 << xkb_map_mod_get_index(input->xkb.keymap, "Shift");
 }
+#else
+#define keyboard_handle_keymap NULL
+#endif
 
 static void
 keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
@@ -2994,6 +2999,50 @@ keyboard_handle_leave(void *data, struct wl_keyboard *keyboard,
 	input_remove_keyboard_focus(input);
 }
 
+#define WINKEY_ERROR 0xFFFFFFFF
+#define WINKEY_MAXIMIZED 0x1008FF55
+#define WINKEY_FULLSCREEN 0x1008FF59
+#define WINKEY_CLOSEWINDOW 0x1008FF56
+static uint32_t
+keyboard_translate_key(uint32_t key, struct input *input)
+{
+	uint32_t code =  0;
+#ifdef ENABLE_XKBCOMMON
+	uint32_t num_syms;
+	const xkb_keysym_t *syms;
+	xkb_keysym_t sym;
+
+	if (!input->xkb.state)
+		return WINKEY_ERROR;
+	code = key + 8;
+
+	num_syms = xkb_key_get_syms(input->xkb.state, code, &syms);
+
+	sym = WL_KEY_NoSymbol;
+	if (num_syms == 1)
+		sym = syms[0];
+
+	if (sym == XKB_KEY_F5 && input->modifiers == MOD_ALT_MASK)
+		code = WINKEY_MAXIMIZED;
+	else if (sym == XKB_KEY_F11)
+		code = WINKEY_FULLSCREEN;
+	else if (sym == XKB_KEY_F4 && input->modifiers == MOD_ALT_MASK)
+		code = WINKEY_CLOSEWINDOW;
+	else
+		code = sym;
+#else
+	if (key == KEY_F5)
+		code = WINKEY_MAXIMIZED;
+	if (key == KEY_F11)
+		code = WINKEY_FULLSCREEN;
+	else if (key == KEY_F4 || key == KEY_CLOSE)
+		code = WINKEY_CLOSEWINDOW;
+	else
+		code = WINKEY_ERROR;
+#endif
+	return code;
+}
+
 static void
 keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
 		    uint32_t serial, uint32_t time, uint32_t key,
@@ -3001,33 +3050,27 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
 {
 	struct input *input = data;
 	struct window *window = input->keyboard_focus;
-	uint32_t code, num_syms;
 	enum wl_keyboard_key_state state = state_w;
-	const xkb_keysym_t *syms;
-	xkb_keysym_t sym;
+	uint32_t sym;
 	struct itimerspec its;
 
 	input->display->serial = serial;
-	code = key + 8;
-	if (!window || !input->xkb.state)
+	if (!window)
 		return;
 
-	num_syms = xkb_key_get_syms(input->xkb.state, code, &syms);
+	sym = keyboard_translate_key(key, input);
 
-	sym = XKB_KEY_NoSymbol;
-	if (num_syms == 1)
-		sym = syms[0];
-
-	if (sym == XKB_KEY_F5 && input->modifiers == MOD_ALT_MASK) {
+	if (sym == WINKEY_ERROR) {
+		return;
+	} else if (sym == WINKEY_MAXIMIZED) {
 		if (state == WL_KEYBOARD_KEY_STATE_PRESSED)
 			window_set_maximized(window,
 					     window->type != TYPE_MAXIMIZED);
-	} else if (sym == XKB_KEY_F11 &&
+	} else if (sym == WINKEY_FULLSCREEN &&
 		   window->fullscreen_handler &&
 		   state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		window->fullscreen_handler(window, window->user_data);
-	} else if (sym == XKB_KEY_F4 &&
-		   input->modifiers == MOD_ALT_MASK &&
+	} else if (sym == WINKEY_CLOSEWINDOW &&
 		   state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		if (window->close_handler)
 			window->close_handler(window->parent,
@@ -3058,6 +3101,7 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
 	}
 }
 
+#ifdef ENABLE_XKBCOMMON
 static void
 keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
 			  uint32_t serial, uint32_t mods_depressed,
@@ -3084,6 +3128,9 @@ keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
 	if (mask & input->xkb.shift_mask)
 		input->modifiers |= MOD_SHIFT_MASK;
 }
+#else
+#define keyboard_handle_modifiers NULL
+#endif
 
 static const struct wl_keyboard_listener keyboard_listener = {
 	keyboard_handle_keymap,
@@ -4660,12 +4707,16 @@ output_get_scale(struct output *output)
 	return output->scale;
 }
 
+#ifdef ENABLE_XKBCOMMON
 static void
 fini_xkb(struct input *input)
 {
 	xkb_state_unref(input->xkb.state);
 	xkb_map_unref(input->xkb.keymap);
 }
+#else
+#define fini_xkb(...) do{}while(0)
+#endif
 
 static void
 display_add_input(struct display *d, uint32_t id)
@@ -4988,11 +5039,13 @@ display_create(int *argc, char *argv[])
 	wl_list_init(&d->output_list);
 	wl_list_init(&d->global_list);
 
+#ifdef ENABLE_XKBCOMMON
 	d->xkb_context = xkb_context_new(0);
 	if (d->xkb_context == NULL) {
 		fprintf(stderr, "Failed to create XKB context\n");
 		return NULL;
 	}
+#endif
 
 	d->workspace = 0;
 	d->workspace_count = 1;
@@ -5058,7 +5111,9 @@ display_destroy(struct display *display)
 	display_destroy_outputs(display);
 	display_destroy_inputs(display);
 
+#ifdef ENABLE_XKBCOMMON
 	xkb_context_unref(display->xkb_context);
+#endif
 
 	theme_destroy(display->theme);
 	destroy_cursors(display);
@@ -5271,6 +5326,7 @@ keysym_modifiers_add(struct wl_array *modifiers_map,
 	strncpy(p, name, len);
 }
 
+#ifdef ENABLE_XKBCOMMON
 static xkb_mod_index_t
 keysym_modifiers_get_index(struct wl_array *modifiers_map,
 			   const char *name)
@@ -5300,3 +5356,4 @@ keysym_modifiers_get_mask(struct wl_array *modifiers_map,
 
 	return 1 << index;
 }
+#endif

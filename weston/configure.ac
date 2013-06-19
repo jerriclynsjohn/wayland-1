@@ -70,6 +70,7 @@ if test x$enable_xkbcommon != xno; then
 	PKG_CHECK_MODULES(XKBCOMMON, [xkbcommon], [have_xkbcommon=yes], [have_xkbcommon=no])
 	AS_IF([test "x$have_xkbcommon" = "xyes"],
 		  [AC_DEFINE([ENABLE_XKBCOMMON], [1], [Build Weston with libxkbcommon support])])
+	AM_CONDITIONAL(ENABLE_XKBCOMMON, test x$enable_xkbcommon = xyes)
 fi
 
 PKG_CHECK_MODULES(COMPOSITOR, [$COMPOSITOR_MODULES])
@@ -256,7 +257,7 @@ AM_CONDITIONAL(BUILD_CLIENTS, test x$enable_clients = xyes)
 if test x$enable_clients = xyes; then
   AC_DEFINE([BUILD_CLIENTS], [1], [Build the Wayland clients])
 
-  PKG_CHECK_MODULES(CLIENT, [wayland-client cairo >= 1.10.0 xkbcommon wayland-cursor])
+  PKG_CHECK_MODULES(CLIENT, [wayland-client cairo >= 1.10.0 wayland-cursor])
   PKG_CHECK_MODULES(SERVER, [wayland-server])
   PKG_CHECK_MODULES(WESTON_INFO, [wayland-client])
 
@@ -310,7 +311,7 @@ AM_CONDITIONAL(BUILD_FULL_GL_CLIENTS,
 	       test x$cairo_modules = "xcairo-gl" -a "x$have_cairo_egl" = "xyes" -a "x$enable_egl" = "xyes")
 
 AM_CONDITIONAL(BUILD_SUBSURFACES_CLIENT,
-	       [test '(' "x$have_cairo_egl" != "xyes" -o "x$cairo_modules" = "xcairo-glesv2" ')' -a "x$enable_simple_egl_clients" = "xyes"])
+	       [test '(' "x$have_cairo_egl" != "xyes" -o "x$cairo_modules" = "xcairo-glesv2" ')' -a "x$enable_simple_egl_clients" = "xyes" -a "x$enable_xkbcommon" = "xyes"])
 
 AM_CONDITIONAL(ENABLE_DESKTOP_SHELL, true)
 

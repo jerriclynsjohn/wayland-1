@@ -23,7 +23,10 @@
 #ifndef _WINDOW_H_
 #define _WINDOW_H_
 
+#ifdef ENABLE_XKBCOMMON
 #include <xkbcommon/xkbcommon.h>
+#else
+#endif
 #include <wayland-client.h>
 #include <cairo.h>
 #include "../shared/config-parser.h"
@@ -520,6 +523,7 @@ output_get_transform(struct output *output);
 uint32_t
 output_get_scale(struct output *output);
 
+#ifdef ENABLE_XKBCOMMON
 void
 keysym_modifiers_add(struct wl_array *modifiers_map,
 		     const char *name);
@@ -527,5 +531,6 @@ keysym_modifiers_add(struct wl_array *modifiers_map,
 xkb_mod_mask_t
 keysym_modifiers_get_mask(struct wl_array *modifiers_map,
 			  const char *name);
+#endif
 
 #endif

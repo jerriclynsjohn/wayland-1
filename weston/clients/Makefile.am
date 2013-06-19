@@ -11,6 +11,7 @@ noinst_PROGRAMS =				\
 
 libexec_PROGRAMS =				\
 	$(desktop_shell)			\
+	$(desktop_shell2)			\
 	$(tablet_shell)				\
 	$(screenshooter)			\
 	$(screensaver)				\
@@ -51,25 +52,34 @@ simple_egl_LDADD = $(SIMPLE_EGL_CLIENT_LIBS) -lm
 endif
 
 if BUILD_CLIENTS
+if ENABLE_XKBCOMMON
 terminal = weston-terminal
+keyboard = weston-keyboard
+im = weston-simple-im
+cliptest = cliptest
+resizor = resizor
+transformed = transformed
+fullscreen = fullscreen
+endif
 
 clients_programs =				\
 	flower					\
 	image					\
-	cliptest				\
+	$(cliptest)				\
 	dnd					\
 	smoke					\
-	resizor					\
+	$(resizor)					\
 	eventdemo				\
 	clickdot				\
-	transformed				\
-	fullscreen				\
+	$(transformed)				\
+	$(fullscreen)				\
 	calibrator				\
 	$(subsurfaces)				\
 	$(full_gl_client_programs)		\
 	$(cairo_glesv2_programs)
 
 desktop_shell = weston-desktop-shell
+desktop_shell2 = weston-desktop-shell2
 
 if ENABLE_TABLET_SHELL
 tablet_shell = weston-tablet-shell
@@ -164,7 +174,6 @@ editor_LDADD = libtoytoolkit.la $(PANGO_LIBS)
 editor_CPPFLAGS = $(AM_CPPFLAGS) $(PANGO_CFLAGS)
 endif
 
-keyboard = weston-keyboard
 weston_keyboard_SOURCES = 			\
 	keyboard.c				\
 	desktop-shell-client-protocol.h		\
@@ -173,7 +182,6 @@ weston_keyboard_SOURCES = 			\
 	input-method-client-protocol.h
 weston_keyboard_LDADD = libtoytoolkit.la
 
-im = weston-simple-im
 weston_simple_im_SOURCES = 			\
 	weston-simple-im.c			\
 	input-method-protocol.c			\
@@ -192,6 +200,15 @@ weston_desktop_shell_SOURCES =			\
 	desktop-shell-client-protocol.h		\
 	desktop-shell-protocol.c
 weston_desktop_shell_LDADD = libtoytoolkit.la
+
+weston_desktop_shell2_SOURCES =			\
+	desktop-shell-simple.c				\
+	desktop-shell-unlock.c				\
+	desktop-shell-panel.c				\
+	desktop-shell-background.c				\
+	desktop-shell-client-protocol.h		\
+	desktop-shell-protocol.c
+weston_desktop_shell2_LDADD = libtoytoolkit.la
 
 weston_tablet_shell_SOURCES =			\
 	tablet-shell.c				\

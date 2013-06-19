@@ -188,8 +188,8 @@ key_handler(struct window *window, struct input *input, uint32_t time,
 	if (state == WL_KEYBOARD_KEY_STATE_RELEASED)
 		return;
 
-	switch (sym) {
-	case XKB_KEY_Escape:
+	switch (key) {
+	case KEY_ESC:
 		display_exit(clickdot->display);
 		break;
 	}

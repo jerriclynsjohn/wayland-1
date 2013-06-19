@@ -285,17 +285,30 @@ key_handler(struct window *window, struct input *input, uint32_t time,
 	if (state == WL_KEYBOARD_KEY_STATE_RELEASED)
 		return;
 
+#ifdef ENABLE_XKBCOMMON
 	switch (sym) {
 	case XKB_KEY_minus:
+#else
+	switch (key) {
+	case KEY_ZOOMOUT:
+#endif
 		zoom(image, 0.8);
 		window_schedule_redraw(image->window);
 		break;
+#ifdef ENABLE_XKBCOMMON
 	case XKB_KEY_equal:
 	case XKB_KEY_plus:
+#else
+	case KEY_ZOOMIN:
+#endif
 		zoom(image, 1.2);
 		window_schedule_redraw(image->window);
 		break;
+#ifdef ENABLE_XKBCOMMON
 	case XKB_KEY_1:
+#else
+	case KEY_ZOOMRESET:
+#endif
 		image->matrix.xx = 1.0;
 		image->matrix.xy = 0.0;
 		image->matrix.yx = 0.0;
