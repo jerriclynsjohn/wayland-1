@@ -195,7 +195,10 @@ weston_info_SOURCES =				\
 weston_info_LDADD = $(WESTON_INFO_LIBS)
 
 weston_desktop_shell_SOURCES =			\
-	desktop-shell.c				\
+	desktop-shell-simple.c				\
+	desktop-shell-unlock.c				\
+	desktop-shell-panel.c				\
+	desktop-shell-background.c				\
 	desktop-shell-client-protocol.h		\
 	desktop-shell-protocol.c
 weston_desktop_shell_LDADD = libtoytoolkit.la
